@@ -1,0 +1,11 @@
+[Main]
+log_legel = "info"
+# service = ''
+
+[PostgreSQL-Info]
+database = 'tier_list'
+password = 'tier_list_password'
+host = 'localhost'
+user = 'tier_list'
+
+[Webhook-Info]
