@@ -17,7 +17,7 @@ enum HelpCommandMode<'a> {
     Command(&'a Command),
 }
 
-fn get_command_mapping(commands: &[Command]) -> IndexMap<&str, Cec<&Command>> {
+fn get_command_mapping(commands: &[Command]) -> IndexMap<&str, Vec<&Command>> {
     let mut mapping = IndexMap::new();
 
     for command in commands {
@@ -177,7 +177,7 @@ pub async fn command_func(ctx: Context<'_>, command: Option<&str>) -> CommandRes
                 );
 
                 format_params(&mut msg, command_obj);
-                msg.push(str("```\n");
+                msg.push(str("```\n"));
 
                 if !command_obj.parameters.is_empty() {
                     msg.push_str("__**Parameter Descriptions**__\n");

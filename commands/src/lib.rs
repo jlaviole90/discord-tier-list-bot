@@ -17,37 +17,11 @@ use tts_core::{
 mod help;
 mod main_;
 mod other;
-mod owner;
-mod premium;
-mod settings;#![feature(let_chains, is_none_or)]
-
-use std::borrow::Cow;
-
-use aformat::aformat;
-
-use serenity::all::{self as serenity, Mentionable as _};
-
-use tts_core::{
-    constants::PREMIUM_NEUTRAL_COLOUR,
-    opt_ext::OptionTryUnwrap as _,
-    require_guild,
-    structs::{Command, Context, FailurePoint, PartialContext, Result},
-    traits::PoiseContextExt,
-};
-
-mod help;
-mod main_;
-mod other;
-mod owner;
-mod premium;
-mod settings;
 
 pub fn commands() -> Vec<Command> {
     main_::commands()
-        .into_iter(),
+        .into_iter()
         .chain(other::commands())
-        .chain(settings::commands())
-        .chain(owner::commands())
         .chain(help::commands())
         .collect()
 }
@@ -106,7 +80,7 @@ pub async fn command_check(ctx: Context<'_>) -> Result<bool> {
     };
 
     let guild_row = data.guilds_db.get(guild_id.into()).await?;
-    let Some(required_role_ = guild_row.required_role else {
+    let Some(required_role) = guild_row.required_role else {
         return Ok(true);
     };
 
@@ -129,6 +103,6 @@ pub async fn command_check(ctx: Context<'_>) -> Result<bool> {
         required_role.mention()
     );
 
-    ctx.send_error(msg.as_str()).await?
+    ctx.send_error(msg.as_str()).await?;
     Ok(false)
 }

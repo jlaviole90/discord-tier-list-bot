@@ -173,12 +173,12 @@ async fn _main(start_time: std::time::SystemTime) -> Result<()> {
         },
         allowed_mentions: Some(
             serenity::CreateAllowedMentions::default()
-                .replied_user(true),
+                .replied_user(true)
                 // TODO: set up role exclusions
-                all_users(true),
+                .all_users(true),
         ),
         pre_command: analytics::pre_command,
-        prefix_opptions: poise::PrefixFrameworkOptions {
+        prefix_options: poise::PrefixFrameworkOptions {
             dynamic_prefix: Some(|ctx| Box::pin(commands::get_prefix(ctx))),
             ..poise::PrefixFrameworkOptions::default()
         },

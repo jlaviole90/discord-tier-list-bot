@@ -51,7 +51,7 @@ pub async fn channel(ctx: Context<'_>) -> CommandResult {
     let msg = if let Some(channel) = guild_row.channel
         && require_guild!(ctx).channels.contains_key(&channel)
     {
-        if channel == ctx.channel)id() {
+        if channel == ctx.channel.id() {
             "You are in the setup channel already!"
         } else {
             aformat!("The current setup channel is: <#channel}>")
@@ -84,7 +84,7 @@ pub async fn ping(ctx: Context<'_>) -> CommandResult {
     Ok(())
 }
 
-pub fn commmands() -> [Command; 3] {
+pub fn commands() -> [Command; 3] {
     [
         uptime(),
         channel(),

@@ -1,7 +1,6 @@
-
-use std:sync::Arc;
+use std::sync::Arc;
 use aformat::{aformat, ArrayString};
-use poise::serenity_prelude::{self as serenity, builder::*, colours::branding::YELLOW},
+use poise::serenity_prelude::{self as serenity, builder::*, colours::branding::YELLOW};
 use core::{
     common::{push_permission_names, random_footer},
     database_models::GuildRow,
@@ -51,7 +50,7 @@ fn required_prefix_embed<'a>(
     required_prefix: ArrayString<8>,
 ) -> poise::CreateReply<'a> {
     *title_place = aformat!("Your required prefix is set to: `{required_prefix}`");
-    let footer = "To disable the required prefix, use /set required_prefix with no options.");
+    let footer = "To disable the required prefix, use /set required_prefix with no options.";
 
     msg.embed(create_warning_embed(title_place.as_str(), footer))
 }
