@@ -1,3 +1,5 @@
+use poise::serenity_prelude as serenity;
+
 pub const RED: u32 = 0xff0000;
 pub const NEUTRAL_COLOUR: u32 = 0x3498db;
 
@@ -65,3 +67,12 @@ pub const DB_SETUP_QUERY: &str = "
     INSERT INTO userinfo(user_id) VALUES(0);
     INSERT INTO nicknames(guild_id, user_id) VALUES (0, 0);
 ";
+
+pub fn get_intents() -> serenity::GatewayIntents {
+    serenity::GatewayIntents::GUILDS
+        | serenity::GatewayIntents::GUILD_MESSAGES
+        | serenity::GatewayIntents::GUILD_MEMBERS
+        | serenity::GatewayIntents::MESSAGE_CONTENT
+        | serenity::GatewayIntents::GUILD_PRESENCES
+}
+

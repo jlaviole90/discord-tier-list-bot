@@ -7,9 +7,8 @@ edition = "2021"
 members = [
     "core",
     "events",
-    "tasks",
     "commands",
-    "migrations",
+    "tasks",
 ]
 
 [profile.release]
@@ -18,47 +17,21 @@ panic = "abort"
 debug = 2
 
 [dependencies]
-const_format = "0.2"
-small-fixed-array = { version = "0.4.5", features = [
-    "nightly",
-    "to-arraystring",
-] }
+extract_map = "0.1.2"
+dotenv = "0.15.0"
 
-sqlx.workspace = true
 serde.workspace = true
 tokio.workspace = true
 poise.workspace = true
-anyhow.workspace = true
-sysinfo.workspace = true
-tracing.workspace = true
 reqwest.workspace = true
-dashmap.workspace = true
-parking_lot.workspace = true
 
 core = { path = "core" }
-tasks = { path = "tasks" }
-commands = { path = "commands" }
 events = { path = "events" }
-migrations = { path = "migrations" }
+commands = { path = "commands" }
+tasks = { path = "tasks" }
 
 [workspace.dependencies]
-regex = "1"
 serde = "1"
-serde_json = "1.0.120"
-anyhow = "1"
-tracing = "0.1"
-sysinfo = "0.30"
-aformat = "0.1.3"
-itertools = "0.13"
-arrayvec = "0.7.4"
-parking_lot = "0.12"
-typesize = { version = "0.1.2", features = ["arrayvec"] }
-to-arraystring = { version = "0.2.2", features = ["nonzero_impls"] } 
-
-[workspace.dependencies.sqlx]
-version = "0.7"
-default-features = false
-features = ["macros", "postgres", "runtime-tokio-rustls"]
 
 [workspace.dependencies.reqwest]
 version = "0.12"
@@ -69,14 +42,9 @@ features = ["rustls-tls"]
 version = "1"
 features = ["rt-multi-thread", "signal", "parking_lot"]
 
-[workspace.dependencies.dashmap]
-version = "6"
-default-features = false
-
 [workspace.dependencies.serenity]
 git = "https://github.com/serenity-rs/serenity"
-features = ["typesize", "temp_cache"]
-default-features = false
+default-features = true 
 branch = "next"
 
 [workspace.dependencies.poise]

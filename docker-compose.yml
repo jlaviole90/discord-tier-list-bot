@@ -1,6 +1,6 @@
 services:
   bot:
-      image: discord-tier-list-bot/Bot
+      image: discord-tier-list-bot/bot
       volumes:
         - type: bind
           source: ./config.toml
