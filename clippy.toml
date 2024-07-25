@@ -1,4 +1,0 @@
-disallowed-methods = [
-    "std::option::Option::map_or",
-    "std::option::Option::map_or_else",
-]
