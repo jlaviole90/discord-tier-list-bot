@@ -6,39 +6,32 @@ use crate::config;
 
 pub fn create(name: String, guild_id: serenity::GuildId) -> Result<(), String> {
     match thread::spawn(move || -> Result<(), ()> {
-        let mut db_client = config::init();
-        // TO DO: re-engineer for multiple tables of the same name
-        // SOLVED: just use guild_id as name!
-        let create_query = format!(
-            "
-                CREATE TABLE IF NOT EXISTS {guild_id} (
-                    gid             numeric,
-                    uid             numeric,
-                    d_name          text,
-                    pts             bigint,
+        if let Ok(_) = config::init().execute(
+            &format!(
+                "
+                    CREATE TABLE IF NOT EXISTS t_{guild_id} (
+                        uid             numeric,
+                        d_name          text,
+                        pts             bigint,
 
-                    PRIMARY KEY(d_name, gid)
-                );\n
-            "
-        );
-
-        let r = db_client.execute(&create_query, &[]);
-
-        if r.is_err() {
-            return Err(());
+                        PRIMARY KEY(uid)
+                    );\n
+                "
+            ),
+            &[],
+        ) {
+            if let Ok(_) = index_new_table(name, guild_id) {
+                return Ok(());
+            }
         }
-
-        let idx = index_new_table(name, guild_id);
-        if idx.is_err() {
-            Err(())
-        } else {
-            Ok(())
-        }
+        Err(())
     })
     .join()
     {
         Ok(Ok(_)) => Ok(()),
-        Ok(Err(_)) | Err(_) => Err("Failed to create new table. Please try again later".to_string()),
+        Ok(Err(_)) | Err(_) => {
+            Err("Failed to create new table. Please try again later".to_string())
+        }
     }
 }
 
@@ -48,20 +41,21 @@ pub fn insert_new(
 ) -> Result<(), String> {
     match thread::spawn(move || -> Result<(), ()> {
         let mut db_client = config::init();
+        // This may not be completely optimal, but if one
+        // fails there really isn't any point in doing the rest.
         for member in members {
-            let gid = &guild_id;
-            let uid = &member.user.id;
-            let mem = &member.display_name();
-            let ins_query = format!(
-                "
-                    INSERT INTO {gid}(gid, uid, d_name, pts)
-                    VALUES ({gid}, {uid}, \'{mem}\', 0);\n
-                "
-            );
-
-            let r = db_client.execute(&ins_query, &[]);
-
-            if r.is_err() {
+            if let Err(_) = db_client.execute(
+                &format!(
+                    "
+                        INSERT INTO t_{}(uid, d_name, pts)
+                        VALUES ({}, \'{}\', 0);\n
+                    ",
+                    &guild_id,
+                    &member.user.id,
+                    &member.display_name()
+                ),
+                &[],
+            ) {
                 return Err(());
             }
         }
@@ -71,33 +65,34 @@ pub fn insert_new(
     {
         Ok(Ok(_)) => Ok(()),
         // TODO: idempotency
-        Ok(Err(_)) | Err(_) => Err("Failed to insert members into new table. Rolling back".to_string()),
+        Ok(Err(_)) | Err(_) => {
+            Err("Failed to insert members into new table. Rolling back".to_string())
+        }
     }
 }
 
 pub fn index_new_table(table_name: String, guild_id: serenity::GuildId) -> Result<(), String> {
     match thread::spawn(move || -> Result<(), ()> {
-        let mut db_client = config::init();
-
-        let ins_query = format!(
-            "
-                INSERT INTO table_name_by_guild_id(gid, t_name)
-                VALUES ({guild_id}, \'{table_name}\');\n
-            "
-        );
-
-        let r = db_client.execute(&ins_query, &[]);
-
-        if r.is_err() {
-            Err(())
-        } else {
+        if let Ok(_) = config::init().execute(
+            &format!(
+                "
+                    INSERT INTO table_name_by_guild_id(gid, t_name)
+                    VALUES ({guild_id}, \'{table_name}\');\n
+                "
+            ),
+            &[],
+        ) {
             Ok(())
+        } else {
+            Err(())
         }
     })
     .join()
     {
         Ok(Ok(_)) => Ok(()),
         // TODO: idempotency
-        Ok(Err(_)) | Err(_) => Err("Failed to insert new table into index. Rolling back.".to_string()),
+        Ok(Err(_)) | Err(_) => {
+            Err("Failed to insert new table into index. Rolling back.".to_string())
+        }
     }
 }

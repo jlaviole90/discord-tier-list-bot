@@ -12,3 +12,4 @@ reqwest.workspace = true
 serenity.workspace = true
 
 core = { path = "../core" }
+tasks = { path = "../tasks" }

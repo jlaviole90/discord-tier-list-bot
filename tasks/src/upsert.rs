@@ -1,4 +1,3 @@
-use ::serenity::small_fixed_array::FixedString;
 use poise::serenity_prelude as serenity;
 use std::thread;
 
@@ -10,37 +9,36 @@ pub fn upsert_user(
     points: u64,
 ) -> Result<(), String> {
     match thread::spawn(move || -> Result<(), ()> {
+        // TODO: this can definitely be done in 1 query.
+        // my SQL skills do not immediately allow that.
         let mut db_client = config::init();
-        let sel_query = format!(
-            "
-                SELECT g.pts from {guild_id}
-                WHERE g.uid = {user_id};\n
-            "
-        );
-
-        let u = db_client.query(&sel_query, &[]);
-        if u.is_err() {
-            return Err(());
+        if let Ok(r) = db_client.query(
+            &format!(
+                "
+                    SELECT g.pts from t_{guild_id} g
+                    WHERE g.uid = {user_id};\n
+                "
+            ),
+            &[],
+        ) {
+            let pts: i64 = r.first().unwrap().get(0);
+            if let Ok(_) = db_client.execute(
+                &format!(
+                    "
+                        UPDATE t_{}
+                        SET pts = {}
+                        WHERE uid = {};\n
+                    ",
+                    guild_id,
+                    (pts + points as i64),
+                    user_id
+                ),
+                &[],
+            ) {
+                return Ok(());
+            }
         }
-
-        let mut pts: i64 = u.unwrap().first().unwrap().get(0);
-        pts += points as i64;
-
-        let upsert_query = format!(
-            "
-                UPDATE {guild_id} g
-                SET g.pts = {pts}
-                WHERE g.uid = {user_id};\n
-            "
-        );
-
-        let r = db_client.execute(&upsert_query, &[]);
-
-        if r.is_err() {
-            Err(())
-        } else {
-            Ok(())
-        }
+        Err(())
     })
     .join()
     {
@@ -51,21 +49,19 @@ pub fn upsert_user(
 
 pub fn update_table_alias(guild_id: serenity::GuildId, new_alias: String) -> Result<(), String> {
     match thread::spawn(move || -> Result<(), ()> {
-        let mut db_client = config::init();
-        let alter_query = format!(
-            "
-                UPDATE table_name_by_build_id t
-                SET t.t_name = \'{new_alias}\'
-                WHERE gid = {guild_id};\n
-            "
-        );
-
-        let r = db_client.execute(&alter_query, &[]);
-
-        if r.is_err() {
-            Err(())
-        } else {
+        if let Ok(_) = config::init().execute(
+            &format!(
+                "
+                    UPDATE table_name_by_guild_id
+                    SET t_name = \'{new_alias}\'
+                    WHERE gid = {guild_id};\n
+                "
+            ),
+            &[],
+        ) {
             Ok(())
+        } else {
+            Err(())
         }
     })
     .join()
@@ -77,21 +73,19 @@ pub fn update_table_alias(guild_id: serenity::GuildId, new_alias: String) -> Res
 
 pub fn upsert_table_index(guild_id: serenity::GuildId, new_name: String) -> Result<(), String> {
     match thread::spawn(move || -> Result<(), ()> {
-        let mut db_client = config::init();
-        let upsert_query = format!(
-            "
-                INSERT INTO table_name_by_guild_id(t_name) t
-                VALUES ({new_name})
-                WHERE t.gid = {guild_id};\n
-            "
-        );
-
-        let r = db_client.execute(&upsert_query, &[]);
-
-        if r.is_err() {
-            Err(())
-        } else {
+        if let Ok(_) = config::init().execute(
+            &format!(
+                "
+                    INSERT INTO table_name_by_guild_id(t_name)
+                    VALUES ({new_name})
+                    WHERE gid = {guild_id};\n
+                "
+            ),
+            &[],
+        ) {
             Ok(())
+        } else {
+            Err(())
         }
     })
     .join()
@@ -100,5 +94,63 @@ pub fn upsert_table_index(guild_id: serenity::GuildId, new_name: String) -> Resu
         Ok(Err(_)) | Err(_) => {
             Err("Failed to update table name. Please try again later.".to_string())
         }
+    }
+}
+
+pub fn insert_new_member(
+    guild_id: serenity::GuildId,
+    user_id: serenity::UserId,
+    display_name: String,
+) -> Result<(), String> {
+    match thread::spawn(move || -> Result<(), ()> {
+        if let Ok(_) = config::init().execute(
+            &format!(
+                "
+                    INSERT INTO t_{guild_id}(uid, d_name, pts)
+                    VALUES({user_id}, {display_name}, 0);\n
+                "
+            ),
+            &[],
+        ) {
+            Ok(())
+        } else {
+            Err(())
+        }
+    })
+    .join()
+    {
+        Ok(Ok(_)) => Ok(()),
+        Ok(Err(_)) | Err(_) => Err("Failed to insert new member.".to_string()),
+    }
+}
+
+pub fn update_member_name(
+    guild_id: serenity::GuildId,
+    user_id: serenity::UserId,
+    name: String,
+) -> Result<(), String> {
+    match thread::spawn(move || -> Result<(), ()> {
+        if let Ok(_) = config::init().execute(
+            &format!(
+                "
+                    UPDATE t_{guild_id}
+                    SET d_name = {name}
+                    WHERE uid = {user_id};\n
+                "
+            ),
+            &[],
+        ) {
+            Ok(())
+        } else {
+            Err(())
+        }
+    })
+    .join()
+    {
+        Ok(Ok(_)) => Ok(()),
+        Ok(Err(_)) | Err(_) => Err(
+            "Failed to update member's name. This may mean you need to reset your table..."
+                .to_string(),
+        ),
     }
 }

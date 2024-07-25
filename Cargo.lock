@@ -462,6 +462,7 @@ dependencies = [
  "poise",
  "reqwest",
  "serenity",
+ "tasks",
  "tokio",
 ]
 

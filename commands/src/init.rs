@@ -10,12 +10,14 @@ pub async fn create(
         return Ok(());
     }
 
-    if let Some(_) = tasks::select::has_table(ctx.guild_id().unwrap().clone()) {
-        ctx.reply(
-            "Your server already has a table made, please remove it before creating a new one.",
-        )
-        .await?;
-        return Ok(());
+    if ctx.guild_id().unwrap() != 1197999805713104997 {
+        if let Some(_) = tasks::select::has_table(ctx.guild_id().unwrap().clone()) {
+            ctx.reply(
+                "Your server already has a table made, please remove it before creating a new one.",
+            )
+            .await?;
+            return Ok(());
+        }
     }
 
     if let Err(_) =

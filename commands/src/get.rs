@@ -36,11 +36,13 @@ pub async fn top(
     for r in user_rows {
         let name: &str = r.get(0);
         let value: i64 = r.get(1);
-        users.push(Field {
-            name: name.to_string(),
-            value: value.to_string(),
-            inline: true,
-        });
+        if value > 0 {
+            users.push(Field {
+                name: name.to_string(),
+                value: value.to_string(),
+                inline: false,
+            });
+        }
     }
 
     let emb = serenity::CreateEmbed::new()
