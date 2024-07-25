@@ -1,9 +1,7 @@
 use openssl::ssl::{SslConnector, SslMethod};
 use postgres::Client;
-use dotenv::dotenv;
 
 pub fn init() -> Client {
-    dotenv().ok();
     let mut agent_builder =
         SslConnector::builder(SslMethod::tls()).expect("Failed to build SSL connection");
 

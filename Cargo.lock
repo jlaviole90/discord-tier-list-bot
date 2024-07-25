@@ -1839,7 +1839,6 @@ name = "tasks"
 version = "0.1.0"
 dependencies = [
  "core",
- "dotenv",
  "extract_map",
  "openssl",
  "poise",

@@ -1,4 +1,5 @@
 #![allow(stable_features)]
+#![feature(async_closure)]
 #![feature(let_chains)]
 #![warn(
     rust_2018_idioms,
@@ -32,7 +33,7 @@ pub fn main() {
 #[tokio::main]
 async fn run(start_time: std::time::Instant) {
     dotenv().ok();
-    let token = std::env::var("DISCORD_TOKEN").expect("Discord token not found.");
+    let token: String = std::env::var("DISCORD_TOKEN").expect("Discord token not found.");
     let intents = constants::get_intents();
 
     let data = std::sync::Arc::new(framework::Data {
@@ -42,12 +43,17 @@ async fn run(start_time: std::time::Instant) {
 
     let framework = poise::Framework::builder()
         .options(poise::FrameworkOptions {
-            commands: vec![commands::age(), commands::init::create()],
+            commands: vec![
+                commands::age(), // Test command
+                commands::init::create(), // Create table for server
+                commands::update::update(), // Update user points for server
+                commands::update::rename(), // Rename table
+            ],
             ..Default::default()
         })
         .build();
 
-    let client = serenity::ClientBuilder::new(token.as_str(), intents)
+    let client = serenity::ClientBuilder::new(&token, intents)
         .framework(framework)
         .data(data)
         .await;
