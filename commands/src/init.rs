@@ -11,18 +11,22 @@ pub async fn create(
     }
 
     if let Some(_) = tasks::select::has_table(ctx.guild_id().unwrap().clone()) {
-        ctx.reply("Your server already has a table made, please remove it before creating a new one.").await?;
+        ctx.reply(
+            "Your server already has a table made, please remove it before creating a new one.",
+        )
+        .await?;
         return Ok(());
     }
 
-    if let Err(_) = tasks::create::create(table_name.clone().unwrap(), ctx.guild_id().unwrap().clone()) {
+    if let Err(_) =
+        tasks::create::create(table_name.clone().unwrap(), ctx.guild_id().unwrap().clone())
+    {
         ctx.reply("Error creating your table. Refer to syntax, or contact the bot support.")
             .await?;
         return Ok(());
     }
 
     let created = tasks::create::insert_new(
-        table_name.clone().unwrap(),
         ctx.guild_id().unwrap().clone(),
         ctx.guild().unwrap().members.clone(),
     );
@@ -33,6 +37,7 @@ pub async fn create(
     }
 
     let t_name = table_name.unwrap();
-    ctx.reply(format!("Successfully created table {t_name}!")).await?;
+    ctx.reply(format!("Successfully created table {t_name}!"))
+        .await?;
     Ok(())
 }

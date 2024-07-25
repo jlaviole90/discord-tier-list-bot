@@ -7,10 +7,11 @@ use crate::config;
 pub fn create(name: String, guild_id: serenity::GuildId) -> Result<(), String> {
     match thread::spawn(move || -> Result<(), ()> {
         let mut db_client = config::init();
-        // TODO: re-engineer for multiple tables of the same name
+        // TO DO: re-engineer for multiple tables of the same name
+        // SOLVED: just use guild_id as name!
         let create_query = format!(
             "
-                CREATE TABLE IF NOT EXISTS {name} (
+                CREATE TABLE IF NOT EXISTS {guild_id} (
                     gid             numeric,
                     uid             numeric,
                     d_name          text,
@@ -42,7 +43,6 @@ pub fn create(name: String, guild_id: serenity::GuildId) -> Result<(), String> {
 }
 
 pub fn insert_new(
-    name: String,
     guild_id: serenity::GuildId,
     members: ExtractMap<serenity::UserId, serenity::Member>,
 ) -> Result<(), String> {
@@ -54,7 +54,7 @@ pub fn insert_new(
             let mem = &member.display_name();
             let ins_query = format!(
                 "
-                    INSERT INTO {name}(gid, uid, d_name, pts)
+                    INSERT INTO {gid}(gid, uid, d_name, pts)
                     VALUES ({gid}, {uid}, \'{mem}\', 0);\n
                 "
             );

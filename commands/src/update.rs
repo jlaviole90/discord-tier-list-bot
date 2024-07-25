@@ -5,7 +5,7 @@ use poise::serenity_prelude as serenity;
 pub async fn update(
     ctx: framework::Context<'_>,
     #[description = "Tagged Member"] member: Option<serenity::User>,
-    #[description = "Points value"] points: Option<u64>,
+    #[description = "Points value to add"] points: Option<u64>,
 ) -> Result<(), framework::Error> {
     if member.is_none() {
         ctx.reply("Tagged member is required.").await?;
@@ -17,15 +17,14 @@ pub async fn update(
         return Ok(());
     }
 
-    let mem = member.unwrap();
-    let res =
-        tasks::upsert::upsert_user(ctx.guild_id().unwrap(), mem.id, mem.name, points.unwrap());
-    if res.is_ok() {
-        Ok(())
-    } else {
-        // TODO
-        Ok(())
+    if let Err(_) =
+        tasks::upsert::upsert_user(ctx.guild_id().unwrap(), member.unwrap().id, points.unwrap())
+    {
+        ctx.reply("").await?;
+        return Ok(());
     }
+
+    Ok(())
 }
 
 //#[poise::command(slash_command, prefix_command)]
@@ -51,6 +50,12 @@ pub async fn rename(
 ) -> Result<(), framework::Error> {
     if new_name.is_none() {
         ctx.reply("New name required to rename table...").await?;
+        return Ok(());
+    }
+
+    if let Err(_) = tasks::upsert::update_table_alias(ctx.guild_id().unwrap(), new_name.unwrap()) {
+        ctx.reply("Encountered an error executing your request. Please try again later.")
+            .await?;
         return Ok(());
     }
 

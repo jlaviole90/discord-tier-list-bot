@@ -3,6 +3,7 @@ use poise::serenity_prelude as serenity;
 
 pub mod init;
 pub mod update;
+pub mod get;
 
 #[poise::command(slash_command, prefix_command)]
 pub async fn age(

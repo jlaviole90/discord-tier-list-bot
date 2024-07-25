@@ -7,19 +7,30 @@ use crate::config;
 pub fn upsert_user(
     guild_id: serenity::GuildId,
     user_id: serenity::UserId,
-    user_name: FixedString<u8>,
     points: u64,
 ) -> Result<(), String> {
     match thread::spawn(move || -> Result<(), ()> {
         let mut db_client = config::init();
+        let sel_query = format!(
+            "
+                SELECT g.pts from {guild_id}
+                WHERE g.uid = {user_id};\n
+            "
+        );
+
+        let u = db_client.query(&sel_query, &[]);
+        if u.is_err() {
+            return Err(());
+        }
+
+        let mut pts: i64 = u.unwrap().first().unwrap().get(0);
+        pts += points as i64;
+
         let upsert_query = format!(
             "
-                INSERT INTO (
-                    SELECT t_name
-                    FROM table_name_by_guild_id t
-                    WHERE t.gid = {guild_id}
-                )(uid, d_name, pts)
-                VALUES ({user_id}, {user_name}, {points});\n
+                UPDATE {guild_id} g
+                SET g.pts = {pts}
+                WHERE g.uid = {user_id};\n
             "
         );
 
@@ -38,10 +49,16 @@ pub fn upsert_user(
     }
 }
 
-pub fn alter_table_name(old: String, new: String) -> Result<(), String> {
+pub fn update_table_alias(guild_id: serenity::GuildId, new_alias: String) -> Result<(), String> {
     match thread::spawn(move || -> Result<(), ()> {
         let mut db_client = config::init();
-        let alter_query = format!("ALTER TABLE {old} RENAME TO {new};\n");
+        let alter_query = format!(
+            "
+                UPDATE table_name_by_build_id t
+                SET t.t_name = \'{new_alias}\'
+                WHERE gid = {guild_id};\n
+            "
+        );
 
         let r = db_client.execute(&alter_query, &[]);
 
@@ -63,7 +80,7 @@ pub fn upsert_table_index(guild_id: serenity::GuildId, new_name: String) -> Resu
         let mut db_client = config::init();
         let upsert_query = format!(
             "
-                INSERT INTO table_name_by_guild_id(table_name) t
+                INSERT INTO table_name_by_guild_id(t_name) t
                 VALUES ({new_name})
                 WHERE t.gid = {guild_id};\n
             "

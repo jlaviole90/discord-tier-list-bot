@@ -48,6 +48,7 @@ async fn run(start_time: std::time::Instant) {
                 commands::init::create(), // Create table for server
                 commands::update::update(), // Update user points for server
                 commands::update::rename(), // Rename table
+                commands::get::top(), // Display stats
             ],
             ..Default::default()
         })
