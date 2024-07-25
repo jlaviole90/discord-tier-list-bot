@@ -1,82 +1,63 @@
 use poise::serenity_prelude as serenity;
+use poise::serenity_prelude::Result;
 use serenity::FullEvent as Event;
+
+type Error = Box<dyn std::error::Error + Send + Sync>;
 
 use core::framework;
 
-pub async fn listen(ctx: framework::Context<'_>, event: &Event) -> Result<(), ()> {
+pub async fn listen(_ctx: framework::FrameworkContext<'_>, event: &Event) -> Result<(), Error> {
     match event {
-        Event::GuildMemberAddition { new_member } => add_new_member(ctx, new_member).await,
+        Event::GuildMemberAddition { new_member } => add_new_member(new_member).await,
         Event::GuildMemberUpdate {
             old_if_available: _,
             new,
             event: _,
-        } => update_member(ctx, new).await,
+        } => update_member(new).await,
         Event::GuildMemberRemoval {
-            guild_id: _,
+            guild_id,
             user,
             member_data_if_available: _,
-        } => remove_member(ctx, user).await,
-        Event::Message { new_message } => check_for_key_words(ctx, new_message).await,
+        } => remove_member(guild_id, user).await,
+        Event::Message { new_message } => check_for_key_words(new_message).await,
         _ => Ok(()),
     }
 }
 
-async fn add_new_member(ctx: framework::Context<'_>, member: &serenity::Member) -> Result<(), ()> {
+async fn add_new_member(member: &serenity::Member) -> Result<(), Error> {
     if let Err(_) = tasks::upsert::insert_new_member(
-        ctx.guild_id().unwrap(),
+        member.guild_id,
         member.user.id.clone(),
         member.display_name().to_string(),
     ) {
-        let _ = ctx
-            .say(format!(
-                "Failed to insert new member {} into table...",
-                member.display_name()
-            ))
-            .await;
-        Err(())
+        Ok(())
     } else {
         Ok(())
     }
 }
 
-async fn update_member(
-    ctx: framework::Context<'_>,
-    new: &Option<serenity::Member>,
-) -> Result<(), ()> {
+async fn update_member(new: &Option<serenity::Member>) -> Result<(), Error> {
     if let Err(_) = tasks::upsert::update_member_name(
-        ctx.guild_id().unwrap(),
+        new.clone().unwrap().guild_id,
         new.clone().unwrap().user.id,
         new.clone().unwrap().display_name().to_string(),
     ) {
-        let _ = ctx
-            .say(format!("Failed to update {}'s nickname...", {
-                new.clone().unwrap().display_name()
-            }))
-            .await;
-        Err(())
+        Ok(())
     } else {
         Ok(())
     }
 }
 
-async fn remove_member(ctx: framework::Context<'_>, member: &serenity::User) -> Result<(), ()> {
-    if let Err(_) = tasks::delete::delete_member(ctx.guild_id().unwrap(), member.id) {
-        let _ = ctx
-            .say(format!(
-                "Failed to remove {} after they left the server...",
-                member.name
-            ))
-            .await;
-        Err(())
+async fn remove_member(guild_id: &serenity::GuildId, member: &serenity::User) -> Result<(), Error> {
+    if let Err(_) = tasks::delete::delete_member(guild_id.clone(), member.id) {
+        Ok(())
     } else {
         Ok(())
     }
 }
 
-async fn check_for_key_words(
-    _ctx: framework::Context<'_>,
-    _message: &serenity::Message,
-) -> Result<(), ()> {
+async fn check_for_key_words(_message: &serenity::Message) -> Result<(), Error> {
     // TODO
+    // search for key words, and log the messages
     Ok(())
 }

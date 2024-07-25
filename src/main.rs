@@ -43,6 +43,7 @@ async fn run(start_time: std::time::Instant) {
 
     let framework = poise::Framework::builder()
         .options(poise::FrameworkOptions {
+            event_handler: |ctx, event| Box::pin(events::listen(ctx, event)),
             commands: vec![
                 commands::age(), // Test command
                 commands::init::create(), // Create table for server
