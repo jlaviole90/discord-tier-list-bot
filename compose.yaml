@@ -1,12 +1,17 @@
 # https://docs.docker.com/go/compose-spec-reference/
+
+secrets:
+  discord_token:
+    file: ./discord_token.txt
+
 services:
   db:
     container_name: tier-list-db
     image: postgres:16.3-alpine3.20
     restart: always
     environment:
-      - POSTGRES_USER= /run/secrets/pg_user
-      - POSTGRES_PASSWORD= /run/secrets/pg_password
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
       - POSTGRES_DB=tier_list
     ports:
       - '5432:5432'
@@ -17,9 +22,6 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
-    secrets:
-      - pg_user
-      - pg_password
 
   server:
     container_name: discord-tier-list-bot
@@ -33,12 +35,9 @@ services:
       PGHOST: host.docker.internal 
       PGPORT: 5432
       PGDBNAME: tier_list
-      PGUSER: /run/secrets/pg_user
-      PGPASS: /run/secrets/pg_password 
-      DISCORD_TOKEN: /run/secrets/discord_token
+      PGUSER: postgres
+      PGPASS: postgres 
     secrets:
-      - pg_user
-      - pg_password
       - discord_token
     links:
         - db
@@ -47,15 +46,6 @@ services:
     depends_on:
       db:
         condition: service_healthy
-
-secrets:
-  pg_user: 
-    file: ./pg_user.txt
-  pg_password:
-    file: ./pg_password.txt
-  discord_token:
-    file: ./discord_token.txt
-
 
 volumes:
   db:

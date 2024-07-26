@@ -1,5 +1,7 @@
 use core::{constants, framework};
-use poise::serenity_prelude as serenity;
+use std::{fs::File, io::Read};
+use std::io::BufReader;
+use poise::serenity_prelude::{self as serenity};
 use tasks::config;
 
 pub fn main() {
@@ -9,7 +11,7 @@ pub fn main() {
 
 #[tokio::main]
 async fn run(start_time: std::time::Instant) {
-    let token: String = std::env::var("DISCORD_TOKEN").expect("Discord token not found.");
+    let token = get_token().expect("Discord token not found.");
     let intents = constants::get_intents();
 
     let data = std::sync::Arc::new(framework::Data {
@@ -41,5 +43,22 @@ async fn run(start_time: std::time::Instant) {
         .await;
 
     client.unwrap().start().await.unwrap();
+}
+
+fn get_token() -> Result<String, String> {
+    match File::open("/run/secrets/discord_token") {
+        Ok(file) => {
+            let mut buf = BufReader::new(file);
+            let mut cont = String::new();
+            if let Err(_) = buf.read_to_string(&mut cont) {
+                return Err("Failed to read token from docker.".to_string());
+            }
+
+            Ok(cont.trim().to_string())
+        },
+        Err(_) => {
+            Err("Failed to read token from docker.".to_string())
+        }
+    }
 }
 
