@@ -6,37 +6,22 @@ use crate::config;
 pub fn upsert_user(
     guild_id: serenity::GuildId,
     user_id: serenity::UserId,
-    points: u64,
+    points: i64,
 ) -> Result<(), String> {
     match thread::spawn(move || -> Result<(), ()> {
-        // TODO: this can definitely be done in 1 query.
-        // my SQL skills do not immediately allow that.
         let mut db_client = config::init();
-        if let Ok(r) = db_client.query(
+        if let Ok(_) = db_client.query(
             &format!(
                 "
-                    SELECT g.pts from t_{guild_id} g
-                    WHERE g.uid = {user_id};\n
-                "
+                    UPDATE t_{}
+                    SET pts = pts + {}
+                    WHERE uid = {};\n
+                ",
+                guild_id, points, user_id
             ),
             &[],
         ) {
-            let pts: i64 = r.first().unwrap().get(0);
-            if let Ok(_) = db_client.execute(
-                &format!(
-                    "
-                        UPDATE t_{}
-                        SET pts = {}
-                        WHERE uid = {};\n
-                    ",
-                    guild_id,
-                    (pts + points as i64),
-                    user_id
-                ),
-                &[],
-            ) {
-                return Ok(());
-            }
+            return Ok(());
         }
         Err(())
     })

@@ -1,29 +1,6 @@
-#![allow(stable_features)]
-#![feature(async_closure)]
-#![feature(let_chains)]
-#![warn(
-    rust_2018_idioms,
-    missing_copy_implementations,
-    noop_method_call,
-    unused
-)]
-#![warn(clippy::pedantic)]
-#![allow(
-    clippy::cast_sign_loss,
-    clippy::cast_possible_wrap,
-    clippy::cast_lossless,
-    clippy::cast_possible_truncation
-)]
-#![allow(
-    clippy::unreadable_literal,
-    clippy::wildcard_imports,
-    clippy::too_many_lines,
-    clippy::similar_names
-)]
-
 use core::{constants, framework};
 use poise::serenity_prelude as serenity;
-use dotenv::dotenv;
+use tasks::config;
 
 pub fn main() {
     let start_time = std::time::Instant::now();
@@ -32,7 +9,6 @@ pub fn main() {
 
 #[tokio::main]
 async fn run(start_time: std::time::Instant) {
-    dotenv().ok();
     let token: String = std::env::var("DISCORD_TOKEN").expect("Discord token not found.");
     let intents = constants::get_intents();
 
@@ -40,6 +16,10 @@ async fn run(start_time: std::time::Instant) {
         start_time,
         token: token.to_string(),
     });
+
+    if let Err(_) = config::create_index_if_not() {
+        panic!("Critical failure initializing databases. Shutting down");
+    }
 
     let framework = poise::Framework::builder()
         .options(poise::FrameworkOptions {

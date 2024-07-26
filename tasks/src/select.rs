@@ -4,7 +4,7 @@ use std::thread;
 use crate::config;
 
 pub fn has_table(guild_id: serenity::GuildId) -> Option<String> {
-    match thread::spawn(move || -> Result<(), postgres::Row> {
+    match thread::spawn(move || -> Option<postgres::Row> {
         if let Ok(r) = config::init().query(
             &format!(
                 "
@@ -14,15 +14,16 @@ pub fn has_table(guild_id: serenity::GuildId) -> Option<String> {
             ),
             &[],
         ) {
-            Err(r.first().unwrap().clone())
-        } else {
-            Ok(())
+            if r.first().is_some() {
+                return Some(r.first().unwrap().clone());
+            }
         }
+        None
     })
     .join()
     {
-        Ok(Ok(_)) => None,
-        Ok(Err(r)) => Some(r.get(0)),
+        Ok(None) => None,
+        Ok(Some(r)) => Some(r.get(0)),
         Err(_) => None,
     }
 }

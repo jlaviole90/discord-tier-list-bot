@@ -5,7 +5,7 @@ use poise::serenity_prelude as serenity;
 pub async fn update(
     ctx: framework::Context<'_>,
     #[description = "Tagged Member"] member: Option<serenity::User>,
-    #[description = "Points value to add"] points: Option<u64>,
+    #[description = "Points value to add"] points: Option<String>,
 ) -> Result<(), framework::Error> {
     if member.is_none() {
         ctx.reply("Tagged member is required.").await?;
@@ -17,11 +17,18 @@ pub async fn update(
         return Ok(());
     }
 
-    if let Err(_) = tasks::upsert::upsert_user(
-        ctx.guild_id().unwrap(),
-        member.clone().unwrap().id,
-        points.clone().unwrap(),
-    ) {
+    let pts: i64;
+    if let Ok(v) = points.clone().unwrap().parse::<i64>() {
+        pts = v;
+    } else {
+        ctx.reply("Sorry! The number you entered was too large! Try something a bit smaller.")
+            .await?;
+        return Ok(());
+    }
+
+    if let Err(_) =
+        tasks::upsert::upsert_user(ctx.guild_id().unwrap(), member.clone().unwrap().id, pts)
+    {
         ctx.reply("Failed to update the specified user. Check command syntax!")
             .await?;
         return Ok(());
@@ -45,6 +52,15 @@ pub async fn update(
     Ok(())
 }
 
+/*#[poise::command(slash_command, prefix_command)]
+pub async fn subtract(
+    ctx: framework::Context<'_>,
+    #[description = "Tagged Member"] member: Option<serenity::User>,
+    #[description = "Points value to subtract"] points: Option<
+) -> Result<(), framework::Error {
+
+}*/
+
 #[poise::command(slash_command, prefix_command)]
 pub async fn rename(
     ctx: framework::Context<'_>,
@@ -55,13 +71,16 @@ pub async fn rename(
         return Ok(());
     }
 
-    if let Err(_) = tasks::upsert::update_table_alias(ctx.guild_id().unwrap(), new_name.clone().unwrap()) {
+    if let Err(_) =
+        tasks::upsert::update_table_alias(ctx.guild_id().unwrap(), new_name.clone().unwrap())
+    {
         ctx.reply("Encountered an error executing your request. Please try again later.")
             .await?;
         return Ok(());
     }
 
     let name = new_name.unwrap();
-    ctx.reply(format!("Updated, tier list is now named {name}")).await?;
+    ctx.reply(format!("Updated, tier list is now named {name}"))
+        .await?;
     Ok(())
 }

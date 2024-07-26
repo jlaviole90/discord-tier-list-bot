@@ -1,36 +1,45 @@
 # syntax=docker/dockerfile:1
 
+# Comments are provided throughout this file to help you get started.
+# If you need more help, visit the Dockerfile reference guide at
+# https://docs.docker.com/go/dockerfile-reference/
+
+# Want to help us make this template better? Share your feedback here: https://forms.gle/ybq9Krt8jtBL3iCk7
+
+ARG RUST_VERSION=1.79.0
+ARG APP_NAME=discord-tier-list-bot
+
 ################################################################################
 # Create a stage for building the application.
 
-ARG RUST_VERSION=1.59.0-slim-buster as builder
-ARG APP_NAME=my_app_name
-FROM --platform=linux/arm64 rust:${RUST_VERSION} AS build
+FROM rust:${RUST_VERSION}-alpine AS build
 ARG APP_NAME
 WORKDIR /app
-RUN apt-get update && apt-get upgrade -y
-RUN apt-get install -y pkg-config openssl libssl-dev ca-certificates
-RUN \
-  apt-get install ca-certificates && \
-  apt-get clean
+
+# Install host build dependencies.
+RUN apk add --no-cache clang lld musl-dev git
+
 # Build the application.
 # Leverage a cache mount to /usr/local/cargo/registry/
-# for downloaded dependencies and a cache mount to /app/target/ for 
+# for downloaded dependencies, a cache mount to /usr/local/cargo/git/db
+# for git repository dependencies, and a cache mount to /app/target/ for
 # compiled dependencies which will speed up subsequent builds.
 # Leverage a bind mount to the src directory to avoid having to copy the
 # source code into the container. Once built, copy the executable to an
 # output directory before the cache mounted /app/target is unmounted.
+COPY ./core /app/core/
+COPY ./events /app/events/
+COPY ./tasks /app/tasks/
+COPY ./commands /app/commands/
+
 RUN --mount=type=bind,source=src,target=src \
     --mount=type=bind,source=Cargo.toml,target=Cargo.toml \
     --mount=type=bind,source=Cargo.lock,target=Cargo.lock \
     --mount=type=cache,target=/app/target/ \
+    --mount=type=cache,target=/usr/local/cargo/git/db \
     --mount=type=cache,target=/usr/local/cargo/registry/ \
-    <<EOF
-set -e
-rustup target add aarch64-unknown-linux-gnu
-cargo build --locked --release --target aarch64-unknown-linux-gnu
-cp ./target/aarch64-unknown-linux-gnu/release/$APP_NAME /bin/server
-EOF
+cargo build --locked --release && \
+cp ./target/release/$APP_NAME /bin/server
 
 ################################################################################
 # Create a new stage for running the application that contains the minimal
@@ -38,15 +47,14 @@ EOF
 # image from the build stage where the necessary files are copied from the build
 # stage.
 #
-# The example below uses the debian bullseye image as the foundation for running the app.
-# By specifying the "bullseye-slim" tag, it will also use whatever happens to be the
-# most recent version of that tag when you build your Dockerfile. If
-# reproducibility is important, consider using a digest
-# (e.g., debian@sha256:ac707220fbd7b67fc19b112cee8170b41a9e97f703f588b2cdbbcdcecdd8af57).
-FROM --platform=linux/arm64 debian:bullseye-slim AS final
+# The example below uses the alpine image as the foundation for running the app.
+# By specifying the "3.18" tag, it will use version 3.18 of alpine. If
+# reproducability is important, consider using a digest
+# (e.g., alpine@sha256:664888ac9cfd28068e062c991ebcff4b4c7307dc8dd4df9e728bedde5c449d91).
+FROM alpine:3.18 AS final
 
 # Create a non-privileged user that the app will run under.
-# See https://docs.docker.com/develop/develop-images/dockerfile_best-practices/#user
+# See https://docs.docker.com/go/dockerfile-user-best-practices/
 ARG UID=10001
 RUN adduser \
     --disabled-password \
@@ -62,7 +70,7 @@ USER appuser
 COPY --from=build /bin/server /bin/
 
 # Expose the port that the application listens on.
-EXPOSE 1000
+EXPOSE 2018
 
 # What the container should run when it is started.
 CMD ["/bin/server"]

@@ -4,8 +4,6 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-postgres = "0.19.8"
-
 poise.workspace = true
 serde.workspace = true
 tokio.workspace = true

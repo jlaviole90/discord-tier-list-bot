@@ -5,10 +5,7 @@ edition = "2021"
 
 [dependencies]
 postgres = "0.19.8"
-postgres-openssl = "0.5.0"
-openssl = "0.10.66"
 extract_map = "0.1.2"
-#dotenv = "0.15.0"
 
 poise.workspace = true
 serde.workspace = true
