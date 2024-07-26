@@ -92,7 +92,7 @@ pub fn insert_new_member(
             &format!(
                 "
                     INSERT INTO t_{guild_id}(uid, d_name, pts)
-                    VALUES({user_id}, {display_name}, 0);\n
+                    VALUES({user_id}, \'{display_name}\', 0);\n
                 "
             ),
             &[],
@@ -119,7 +119,7 @@ pub fn update_member_name(
             &format!(
                 "
                     UPDATE t_{guild_id}
-                    SET d_name = {name}
+                    SET d_name = \'{name}\'
                     WHERE uid = {user_id};\n
                 "
             ),
