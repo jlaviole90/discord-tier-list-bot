@@ -78,6 +78,22 @@ pub async fn top(
     Ok(())
 }
 
+#[poise::command(slash_command, prefix_command)]
+pub async fn tables(ctx: framework::Context<'_>) -> Result<(), framework::Error> {
+    match tasks::select::has_table(ctx.guild_id().clone().unwrap()) {
+        Ok(Some(tables)) => {
+            let emb = serenity::CreateEmbed::new()
+                .title("Guild Tables")
+                .color(0xff0000)
+                .fields(tables.into_iter().map(|name| (name, "", true)));
+
+            ctx.send(CreateReply::default().embed(emb)).await?;
+            Ok(())
+        }
+        _ => Ok(()),
+    }
+}
+
 struct Field {
     name: String,
     value: i64,

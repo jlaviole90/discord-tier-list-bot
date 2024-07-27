@@ -72,7 +72,7 @@ pub async fn rename(
     }
 
     if let Err(_) =
-        tasks::upsert::update_table_alias(ctx.guild_id().unwrap(), new_name.clone().unwrap())
+        tasks::upsert::update_table_alias(ctx.guild_id().unwrap(), old_name.clone().unwrap(), new_name.clone().unwrap())
     {
         ctx.reply("Encountered an error executing your request. Please try again later.")
             .await?;

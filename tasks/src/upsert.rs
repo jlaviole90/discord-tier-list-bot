@@ -68,6 +68,7 @@ pub fn upsert_user(
 
 pub fn update_table_alias(
     guild_id: serenity::GuildId,
+    old_alias: String,
     new_alias: String,
 ) -> Result<(), QueryError> {
     match thread::spawn(move || -> Result<(), QueryError> {
@@ -76,7 +77,7 @@ pub fn update_table_alias(
                 "
                     UPDATE table_name_by_guild_id
                     SET t_name = \'{new_alias}\'
-                    WHERE gid = {guild_id};\n
+                    WHERE gid = {guild_id} and t_name = \'{old_alias}\';\n
                 "
             ),
             &[],

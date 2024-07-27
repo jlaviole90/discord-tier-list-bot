@@ -39,16 +39,12 @@ pub fn create_root_if_not() -> Result<(), QueryError> {
     match thread::spawn(move || -> Result<(), QueryError> {
         let mut db_client = init();
 
-        if let Err(_) = db_client.execute(&format!("CREATE DATABASE root;\n"), &[]) {
-            return Err(QueryError::None);
-        }
+        let _ = db_client.execute(&format!("CREATE DATABASE root;\n"), &[]);
 
-        if let Err(_) = db_client.execute(
+        let _ = db_client.execute(
             &format!("CREATE ROLE root LOGIN PASSWORD 'p@$$w0rd';\n"),
             &[],
-        ) {
-            return Err(QueryError::None);
-        }
+        );
 
         if let Err(_) = db_client.execute(
             &format!(

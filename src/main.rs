@@ -32,6 +32,7 @@ async fn run(start_time: std::time::Instant) {
                 commands::update::update(), // Update user points for server
                 commands::update::rename(), // Rename table
                 commands::get::top(), // Display stats
+                commands::get::tables() // Display guild tables
             ],
             ..Default::default()
         })
