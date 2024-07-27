@@ -34,9 +34,21 @@ pub fn init() -> Client {
         .expect("Failed to initialize DB client")
 }
 
-pub fn create_index_if_not() -> Result<(), String> {
+pub fn create_root_if_not() -> Result<(), String> {
     match thread::spawn(move || -> Result<(), ()> {
-        if let Ok(_) = init().execute(
+        let mut db_client = init();
+
+        if let Err(_) = db_client.execute(&format!("CREATE DATABASE root;\n"), &[]) {
+            return Err(());
+        }
+
+        if let Err(_) = db_client.execute(
+            &format!("CREATE ROLE root LOGIN PASSWORD 'p@$$w0rd';\n"),
+            &[],
+        ) {
+            return Err(());
+        }
+        if let Err(_) = init().execute(
             &format!(
                 "
                     CREATE TABLE IF NOT EXISTS table_name_by_guild_id (
@@ -49,10 +61,10 @@ pub fn create_index_if_not() -> Result<(), String> {
             ),
             &[],
         ) {
-            Ok(())
-        } else {
-            Err(())
+            return Err(());
         }
+
+        Ok(())
     })
     .join()
     {
@@ -60,3 +72,4 @@ pub fn create_index_if_not() -> Result<(), String> {
         Ok(Err(_)) | Err(_) => Err("Failed to create index table.".to_string()),
     }
 }
+

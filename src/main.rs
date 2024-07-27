@@ -19,8 +19,8 @@ async fn run(start_time: std::time::Instant) {
         token: token.to_string(),
     });
 
-    if let Err(_) = config::create_index_if_not() {
-        panic!("Critical failure initializing databases. Shutting down");
+    if let Err(_) = config::create_root_if_not() {
+        panic!("Critical failure initializing database. Shutting down");
     }
 
     let framework = poise::Framework::builder()

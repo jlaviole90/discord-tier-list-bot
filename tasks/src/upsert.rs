@@ -7,9 +7,28 @@ pub fn upsert_user(
     guild_id: serenity::GuildId,
     user_id: serenity::UserId,
     points: i64,
-) -> Result<(), String> {
-    match thread::spawn(move || -> Result<(), ()> {
+) -> Result<(), ValueError> {
+    match thread::spawn(move || -> Result<(), ValueError> {
         let mut db_client = config::init();
+
+        if let Ok(v) = db_client.query(
+            &format!(
+                "
+                    SELECT pts FROM t_{guild_id};\n
+                "
+            ),
+            &[],
+        ) {
+            if let Some(p) = v.first() {
+                let pts: i64 = p.get(0);
+                if let None = points.checked_add(pts) {
+                    return Err(ValueError::OVERFLOW);
+                }
+            } else {
+                return Err(ValueError::NONE);
+            }
+        }
+
         if let Ok(_) = db_client.query(
             &format!(
                 "
@@ -23,12 +42,13 @@ pub fn upsert_user(
         ) {
             return Ok(());
         }
-        Err(())
+        Err(ValueError::NONE)
     })
     .join()
     {
         Ok(Ok(_)) => Ok(()),
-        Ok(Err(_)) | Err(_) => Err("Failed to upsert user. Please try again later".to_string()),
+        Ok(Err(ValueError::OVERFLOW)) => Err(ValueError::OVERFLOW),
+        Ok(Err(_)) | Err(_) => Err(ValueError::NONE),
     }
 }
 
@@ -138,4 +158,9 @@ pub fn update_member_name(
                 .to_string(),
         ),
     }
+}
+
+pub enum ValueError {
+    OVERFLOW,
+    NONE,
 }
