@@ -76,3 +76,9 @@ pub fn get_intents() -> serenity::GatewayIntents {
         | serenity::GatewayIntents::GUILD_PRESENCES
 }
 
+pub enum QueryError {
+    Overflow,
+    Exists,
+    NotFound,
+    None,
+}

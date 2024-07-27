@@ -1,15 +1,33 @@
+use core::constants::QueryError;
 use extract_map::ExtractMap;
 use poise::serenity_prelude as serenity;
 use std::thread;
 
 use crate::config;
 
-pub fn create(name: String, guild_id: serenity::GuildId) -> Result<(), String> {
-    match thread::spawn(move || -> Result<(), ()> {
-        if let Ok(_) = config::init().execute(
+pub fn create(name: String, guild_id: serenity::GuildId) -> Result<(), QueryError> {
+    match thread::spawn(move || -> Result<(), QueryError> {
+        let mut db_client = config::init();
+        if let Ok(r) = db_client.query(
             &format!(
                 "
-                    CREATE TABLE IF NOT EXISTS t_{guild_id} (
+                    SELECT * FROM table_name_by_guild_id
+                    WHERE gid = {guild_id} AND t_name = {name};\n
+                "
+            ),
+            &[],
+        ) {
+            for row in r {
+                let t_name: &str = row.get(1);
+                if t_name.eq(name.as_str()) {
+                    return Err(QueryError::Exists);
+                }
+            }
+        }
+        if let Ok(_) = db_client.execute(
+            &format!(
+                "
+                    CREATE TABLE IF NOT EXISTS t_{guild_id}_{name} (
                         uid             numeric,
                         d_name          text,
                         pts             bigint,
@@ -24,22 +42,22 @@ pub fn create(name: String, guild_id: serenity::GuildId) -> Result<(), String> {
                 return Ok(());
             }
         }
-        Err(())
+        Err(QueryError::None)
     })
     .join()
     {
         Ok(Ok(_)) => Ok(()),
-        Ok(Err(_)) | Err(_) => {
-            Err("Failed to create new table. Please try again later".to_string())
-        }
+        Ok(Err(QueryError::Exists)) => Err(QueryError::Exists),
+        Ok(Err(_)) | Err(_) => Err(QueryError::None),
     }
 }
 
 pub fn insert_new(
     guild_id: serenity::GuildId,
+    table_name: String,
     members: ExtractMap<serenity::UserId, serenity::Member>,
-) -> Result<(), String> {
-    match thread::spawn(move || -> Result<(), ()> {
+) -> Result<(), QueryError> {
+    match thread::spawn(move || -> Result<(), QueryError> {
         let mut db_client = config::init();
         // This may not be completely optimal, but if one
         // fails there really isn't any point in doing the rest.
@@ -47,16 +65,17 @@ pub fn insert_new(
             if let Err(_) = db_client.execute(
                 &format!(
                     "
-                        INSERT INTO t_{}(uid, d_name, pts)
+                        INSERT INTO t_{}_{}(uid, d_name, pts)
                         VALUES ({}, \'{}\', 0);\n
                     ",
                     &guild_id,
+                    &table_name,
                     &member.user.id,
                     &member.display_name()
                 ),
                 &[],
             ) {
-                return Err(());
+                return Err(QueryError::None);
             }
         }
         Ok(())
@@ -66,13 +85,13 @@ pub fn insert_new(
         Ok(Ok(_)) => Ok(()),
         // TODO: idempotency
         Ok(Err(_)) | Err(_) => {
-            Err("Failed to insert members into new table. Rolling back".to_string())
+            Err(QueryError::None)
         }
     }
 }
 
-pub fn index_new_table(table_name: String, guild_id: serenity::GuildId) -> Result<(), String> {
-    match thread::spawn(move || -> Result<(), ()> {
+pub fn index_new_table(table_name: String, guild_id: serenity::GuildId) -> Result<(), QueryError> {
+    match thread::spawn(move || -> Result<(), QueryError> {
         if let Ok(_) = config::init().execute(
             &format!(
                 "
@@ -84,7 +103,7 @@ pub fn index_new_table(table_name: String, guild_id: serenity::GuildId) -> Resul
         ) {
             Ok(())
         } else {
-            Err(())
+            Err(QueryError::None)
         }
     })
     .join()
@@ -92,7 +111,7 @@ pub fn index_new_table(table_name: String, guild_id: serenity::GuildId) -> Resul
         Ok(Ok(_)) => Ok(()),
         // TODO: idempotency
         Ok(Err(_)) | Err(_) => {
-            Err("Failed to insert new table into index. Rolling back.".to_string())
+            Err(QueryError::None)
         }
     }
 }

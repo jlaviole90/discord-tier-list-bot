@@ -1,31 +1,21 @@
-use core::framework;
+use core::{constants::QueryError, framework};
 use poise::serenity_prelude as serenity;
-use tasks::upsert::ValueError;
+
+const UPDATE_SYNTAX: &str = "Command syntax: update [table_name: string] [user: tagged server memeber] [points: number]";
 
 #[poise::command(slash_command, prefix_command)]
 pub async fn update(
     ctx: framework::Context<'_>,
+    #[description = "Table Name"] table_name: Option<String>,
     #[description = "Tagged Member"] member: Option<serenity::User>,
     #[description = "Points value to add"] points: Option<String>,
 ) -> Result<(), framework::Error> {
-    if member.is_none() {
-        ctx.reply("Tag a member before specifying a point value!")
-            .await?;
-        return Ok(());
-    }
-
-    if points.is_none() {
-        ctx.reply("Points value is required!").await?;
-        return Ok(());
-    }
-
     for c in points.clone().unwrap().chars() {
-        if !c.is_numeric() {
-            ctx.reply("Points can only be a number!").await?;
+        if !c.is_numeric() || table_name.is_none() || member.is_none() || points.is_none() {
+            framework::reply_syntax(ctx, UPDATE_SYNTAX).await;
             return Ok(());
         }
     }
-    
 
     let pts: i64;
     match points.clone().unwrap().parse::<i64>() {
@@ -34,20 +24,20 @@ pub async fn update(
             ctx.reply("Sorry! The number you entered was too large! Try a smaller value.")
                 .await?;
             return Ok(());
-        }
+        },
     }
 
     match tasks::upsert::upsert_user(ctx.guild_id().unwrap(), member.clone().unwrap().id, pts) {
-        Err(ValueError::OVERFLOW) => {
-            ctx.reply("Sorry! That many points can't be added to the specified user. Try a smaller value.").await?;
+        Err(QueryError::Overflow) => {
+            ctx.reply("Sorry, that user can't hold that many points! Try a smaller value.").await?;
             return Ok(());
-        }
-        Err(ValueError::NONE) => {
-            ctx.reply("Failed to update the specified user. Check command syntax!")
+        },
+        Err(QueryError::None) => {
+            ctx.reply("Sorry, I failed to update the specified user. Please try again later.")
                 .await?;
             return Ok(());
-        }
-        Ok(_) => {}
+        },
+        _ => {},
     }
 
     let name = member.clone().unwrap().name.to_string();
@@ -68,22 +58,16 @@ pub async fn update(
     Ok(())
 }
 
-/*#[poise::command(slash_command, prefix_command)]
-pub async fn subtract(
-    ctx: framework::Context<'_>,
-    #[description = "Tagged Member"] member: Option<serenity::User>,
-    #[description = "Points value to subtract"] points: Option<
-) -> Result<(), framework::Error {
-
-}*/
+const RENAME_SYNTAX: &str = "Command syntax: rename [old_name: string] [new_name: string]";
 
 #[poise::command(slash_command, prefix_command)]
 pub async fn rename(
     ctx: framework::Context<'_>,
+    #[description = "Old name"] old_name: Option<String>,
     #[description = "New name"] new_name: Option<String>,
 ) -> Result<(), framework::Error> {
-    if new_name.is_none() {
-        ctx.reply("New name required to rename table...").await?;
+    if old_name.is_none() || new_name.is_none() {
+        framework::reply_syntax(ctx, RENAME_SYNTAX).await;
         return Ok(());
     }
 
@@ -95,8 +79,9 @@ pub async fn rename(
         return Ok(());
     }
 
-    let name = new_name.unwrap();
-    ctx.reply(format!("Updated, tier list is now named {name}"))
+    let nname = new_name.unwrap();
+    let oname = old_name.unwrap();
+    ctx.reply(format!("Updated, {oname} is now named {nname}"))
         .await?;
     Ok(())
 }

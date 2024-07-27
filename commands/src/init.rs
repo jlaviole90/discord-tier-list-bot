@@ -29,7 +29,8 @@ pub async fn create(
     }
 
     let created = tasks::create::insert_new(
-        ctx.guild_id().unwrap().clone(),
+        ctx.guild_id().clone().unwrap(),
+        table_name.clone().unwrap(),
         ctx.guild().unwrap().members.clone(),
     );
     if created.is_err() {

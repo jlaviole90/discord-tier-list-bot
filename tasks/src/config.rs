@@ -1,3 +1,4 @@
+use core::constants::QueryError;
 use postgres::{config::SslMode, Client, NoTls};
 use std::thread;
 
@@ -34,34 +35,35 @@ pub fn init() -> Client {
         .expect("Failed to initialize DB client")
 }
 
-pub fn create_root_if_not() -> Result<(), String> {
-    match thread::spawn(move || -> Result<(), ()> {
+pub fn create_root_if_not() -> Result<(), QueryError> {
+    match thread::spawn(move || -> Result<(), QueryError> {
         let mut db_client = init();
 
         if let Err(_) = db_client.execute(&format!("CREATE DATABASE root;\n"), &[]) {
-            return Err(());
+            return Err(QueryError::None);
         }
 
         if let Err(_) = db_client.execute(
             &format!("CREATE ROLE root LOGIN PASSWORD 'p@$$w0rd';\n"),
             &[],
         ) {
-            return Err(());
+            return Err(QueryError::None);
         }
-        if let Err(_) = init().execute(
+
+        if let Err(_) = db_client.execute(
             &format!(
                 "
                     CREATE TABLE IF NOT EXISTS table_name_by_guild_id (
                         gid     numeric,
                         t_name  text,
 
-                        PRIMARY KEY(gid)
+                        PRIMARY KEY(gid, t_name)
                     );\n
                 "
             ),
             &[],
         ) {
-            return Err(());
+            return Err(QueryError::None);
         }
 
         Ok(())
@@ -69,7 +71,6 @@ pub fn create_root_if_not() -> Result<(), String> {
     .join()
     {
         Ok(Ok(_)) => Ok(()),
-        Ok(Err(_)) | Err(_) => Err("Failed to create index table.".to_string()),
+        Ok(Err(_)) | Err(_) => Err(QueryError::None),
     }
 }
-
