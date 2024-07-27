@@ -10,8 +10,10 @@ pub async fn create(
         return Ok(());
     }
 
-    if ctx.guild_id().unwrap() != 1197999805713104997 {
-        if let Some(_) = tasks::select::has_table(ctx.guild_id().unwrap().clone()) {
+    /* TODO: if this somehow ever has a decent userbase, fund upkeep with premium users
+    match tasks::select::has_table(ctx.guild_id().unwrap().clone()) {
+        Ok(None) => {}
+        _ => {
             ctx.reply(
                 "Your server already has a table made, please remove it before creating a new one.",
             )
@@ -19,6 +21,7 @@ pub async fn create(
             return Ok(());
         }
     }
+    */
 
     if let Err(_) =
         tasks::create::create(table_name.clone().unwrap(), ctx.guild_id().unwrap().clone())

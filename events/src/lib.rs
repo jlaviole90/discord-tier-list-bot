@@ -25,35 +25,26 @@ pub async fn listen(_ctx: framework::FrameworkContext<'_>, event: &Event) -> Res
 }
 
 async fn add_new_member(member: &serenity::Member) -> Result<(), Error> {
-    if let Err(_) = tasks::upsert::insert_new_member(
+    let _ = tasks::upsert::insert_new_member(
         member.guild_id,
         member.user.id.clone(),
         member.display_name().to_string(),
-    ) {
-        Ok(())
-    } else {
-        Ok(())
-    }
+    );
+    Ok(())
 }
 
 async fn update_member(new: &Option<serenity::Member>) -> Result<(), Error> {
-    if let Err(_) = tasks::upsert::update_member_name(
+    let _ = tasks::upsert::update_member_name(
         new.clone().unwrap().guild_id,
         new.clone().unwrap().user.id,
         new.clone().unwrap().display_name().to_string(),
-    ) {
-        Ok(())
-    } else {
-        Ok(())
-    }
+    );
+    Ok(())
 }
 
 async fn remove_member(guild_id: &serenity::GuildId, member: &serenity::User) -> Result<(), Error> {
-    if let Err(_) = tasks::delete::delete_member(guild_id.clone(), member.id) {
-        Ok(())
-    } else {
-        Ok(())
-    }
+    let _ = tasks::delete::delete_member(guild_id.clone(), member.id);
+    Ok(())
 }
 
 async fn check_for_key_words(_message: &serenity::Message) -> Result<(), Error> {

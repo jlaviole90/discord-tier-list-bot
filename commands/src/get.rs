@@ -7,8 +7,9 @@ const TOP_SYNTAX: &str = "Command syntax: top [number: number]";
 pub async fn top(
     ctx: framework::Context<'_>,
     #[description = "Number of values to display"] num: Option<u8>,
+    #[description = ""] table_name: Option<String>,
 ) -> Result<(), framework::Error> {
-    if num.is_none() {
+    if num.is_none() || table_name.is_none() {
         framework::reply_syntax(ctx, TOP_SYNTAX).await;
         return Ok(());
     }
@@ -22,12 +23,22 @@ pub async fn top(
 
     let t_name: String;
     match tasks::select::has_table(ctx.guild_id().clone().unwrap()) {
-        Some(name) => t_name = name,
-        None => {
+        Ok(Some(names)) => {
+            t_name = names
+                .into_iter()
+                .find(|n| n.eq_ignore_ascii_case(table_name.clone().unwrap().as_str()))
+                .unwrap()
+        }
+        Ok(None) => {
             ctx.reply(
                 "You haven't set up a table for your server yet! Use command \"create\" to do so!",
             )
             .await?;
+            return Ok(());
+        }
+        _ => {
+            ctx.reply("Error executing your command. Please try again later.")
+                .await?;
             return Ok(());
         }
     }
