@@ -4,12 +4,19 @@ use std::thread;
 
 use crate::{config, select::get_table_names};
 
-pub fn upsert_user(
+// TODO:
+// needing some form of idempotency.
+// some calls chain together and should
+// rollback all executions/queries
+// on a single failed call (should never happen?)
+
+pub fn update_user_points(
     guild_id: serenity::GuildId,
+    table_name: String,
     user_id: serenity::UserId,
     points: i64,
 ) -> Result<(), QueryError> {
-    match thread::spawn(move || -> Result<(), QueryError> {
+    thread::spawn(move || {
         let mut db_client = config::init();
 
         let tables: Vec<String>;
@@ -19,51 +26,44 @@ pub fn upsert_user(
         }
 
         for name in tables {
-            match db_client.query(
-                &format!(
-                    "
-                        SELECT pts FROM t_{guild_id}_{name};\n
-                    "
-                ),
-                &[],
-            ) {
-                Ok(v) => match v.first() {
-                    Some(p) => {
-                        let pts: i64 = p.get(0);
-                        if let None = points.checked_add(pts) {
-                            return Err(QueryError::Overflow);
-                        }
+            if name.eq_ignore_ascii_case(&table_name) {
+                if let Some(p) = db_client
+                    .query(
+                        &format!(
+                            "
+                                SELECT pts FROM t_{guild_id}_{name};\n
+                            "
+                        ),
+                        &[],
+                    )
+                    .map_err(|_| QueryError::None)?
+                    .first()
+                {
+                    let pts: i64 = p.get(0);
+                    if points.checked_add(pts).is_none() {
+                        return Err(QueryError::Overflow);
                     }
-                    _ => return Err(QueryError::None),
-                },
-                _ => return Err(QueryError::None),
-            }
 
-            match db_client.query(
-                &format!(
-                    "
-                        UPDATE t_{}_{}
-                        SET pts = pts + {}
-                        WHERE uid = {};\n
-                    ",
-                    guild_id, name, points, user_id
-                ),
-                &[],
-            ) {
-                Ok(_) => return Ok(()),
-                _ => return Err(QueryError::None),
+                    if let Ok(_) = db_client.query(
+                        &format!(
+                            "
+                                UPDATE t_{guild_id}_{name}
+                                SET pts = pts + {points}
+                                WHERE uid = {user_id};\n
+                            "
+                        ),
+                        &[],
+                    ) {
+                        return Ok(());
+                    }
+                }
             }
         }
 
-        Ok(())
+        Err(QueryError::NotFound)
     })
     .join()
-    {
-        Ok(Ok(_)) => Ok(()),
-        Ok(Err(QueryError::Overflow)) => Err(QueryError::Overflow),
-        Ok(Err(QueryError::NotFound)) => Err(QueryError::NotFound),
-        Ok(Err(_)) | Err(_) => Err(QueryError::None),
-    }
+    .unwrap()
 }
 
 pub fn update_table_alias(
@@ -71,49 +71,57 @@ pub fn update_table_alias(
     old_alias: String,
     new_alias: String,
 ) -> Result<(), QueryError> {
-    match thread::spawn(move || -> Result<(), QueryError> {
-        match config::init().execute(
-            &format!(
-                "
-                    UPDATE table_name_by_guild_id
-                    SET t_name = \'{new_alias}\'
-                    WHERE gid = {guild_id} and t_name = \'{old_alias}\';\n
-                "
-            ),
-            &[],
-        ) {
-            Ok(_) => Ok(()),
-            Err(_) => Err(QueryError::None),
-        }
+    thread::spawn(move || {
+        let mut db_client = config::init();
+        db_client
+            .execute(
+                &format!(
+                    "
+                        UPDATE table_name_by_guild_id
+                        SET t_name = \'{new_alias}\'
+                        WHERE gid = {guild_id} and t_name = \'{old_alias}\';\n
+                    "
+                ),
+                &[],
+            )
+            .map_err(|_| QueryError::None)
+            .map(|_| {
+                db_client
+                    .execute(
+                        &format!(
+                            "
+                                ALTER TABLE t_{guild_id}_{old_alias}
+                                RENAME TO t_{guild_id}_{new_alias};\n
+                            "
+                        ),
+                        &[],
+                    )
+                    .map_err(|_| QueryError::None)
+                    .map(|_| ())
+            })?
     })
     .join()
-    {
-        Ok(Ok(_)) => Ok(()),
-        Ok(Err(_)) | Err(_) => Err(QueryError::None),
-    }
+    .unwrap()
 }
 
 pub fn upsert_table_index(guild_id: serenity::GuildId, new_name: String) -> Result<(), QueryError> {
-    match thread::spawn(move || -> Result<(), QueryError> {
-        match config::init().execute(
-            &format!(
-                "
-                    INSERT INTO table_name_by_guild_id(t_name)
-                    VALUES (\'{new_name}\')
-                    WHERE gid = {guild_id};\n
-                "
-            ),
-            &[],
-        ) {
-            Ok(_) => Ok(()),
-            Err(_) => Err(QueryError::None),
-        }
+    thread::spawn(move || {
+        config::init()
+            .execute(
+                &format!(
+                    "
+                        INSERT INTO table_name_by_guild_id(t_name)
+                        VALUES (\'{new_name}\')
+                        WHERE gid = {guild_id};\n
+                    "
+                ),
+                &[],
+            )
+            .map_err(|_| QueryError::None)
+            .map(|_| ())
     })
     .join()
-    {
-        Ok(Ok(_)) => Ok(()),
-        Ok(Err(_)) | Err(_) => Err(QueryError::None),
-    }
+    .unwrap()
 }
 
 pub fn insert_new_member(
@@ -121,33 +129,27 @@ pub fn insert_new_member(
     user_id: serenity::UserId,
     display_name: String,
 ) -> Result<(), QueryError> {
-    match thread::spawn(move || -> Result<(), QueryError> {
-        match get_table_names(guild_id) {
-            Ok(r) => {
-                for name in r {
-                    match config::init().execute(
-                        &format!(
-                            "
-                                INSERT INTO t_{guild_id}_{name}(uid, d_name, pts)
-                                VALUES({user_id}, \'{display_name}\', 0);\n
-                            "
-                        ),
-                        &[],
-                    ) {
-                        Ok(_) => return Ok(()),
-                        Err(_) => return Err(QueryError::None),
-                    }
+    thread::spawn(move || match get_table_names(guild_id) {
+        Ok(r) => {
+            for name in r {
+                if let Err(_) = config::init().execute(
+                    &format!(
+                        "
+                            INSERT INTO t_{guild_id}_{name}(uid, d_name, pts)
+                            VALUES({user_id}, \'{display_name}\', 0);\n
+                        "
+                    ),
+                    &[],
+                ) {
+                    return Err(QueryError::None);
                 }
-                Err(QueryError::None)
             }
-            _ => return Err(QueryError::None),
+            Ok(())
         }
+        _ => return Err(QueryError::None),
     })
     .join()
-    {
-        Ok(Ok(_)) => Ok(()),
-        Ok(Err(_)) | Err(_) => Err(QueryError::None),
-    }
+    .unwrap()
 }
 
 pub fn update_member_name(
@@ -155,34 +157,26 @@ pub fn update_member_name(
     user_id: serenity::UserId,
     name: String,
 ) -> Result<(), QueryError> {
-    match thread::spawn(move || -> Result<(), QueryError> {
-        match get_table_names(guild_id) {
-            Ok(r) => {
-                for t_name in r {
-                    if let Ok(_) = config::init().execute(
-                        &format!(
-                            "
-                                UPDATE t_{guild_id}_{t_name}
-                                SET d_name = \'{name}\'
-                                WHERE uid = {user_id};\n
-                            "
-                        ),
-                        &[],
-                    ) {
-                        return Ok(());
-                    } else {
-                        return Err(QueryError::None);
-                    }
+    thread::spawn(move || match get_table_names(guild_id) {
+        Ok(r) => {
+            for t_name in r {
+                if let Err(_) = config::init().execute(
+                    &format!(
+                        "
+                            UPDATE t_{guild_id}_{t_name}
+                            SET d_name = \'{name}\'
+                            WHERE uid = {user_id};\n
+                        "
+                    ),
+                    &[],
+                ) {
+                    return Err(QueryError::None);
                 }
             }
-            _ => return Err(QueryError::None),
+            Ok(())
         }
-
-        Err(QueryError::None)
+        _ => Err(QueryError::None),
     })
     .join()
-    {
-        Ok(Ok(_)) => Ok(()),
-        Ok(Err(_)) | Err(_) => Err(QueryError::None),
-    }
+    .unwrap()
 }

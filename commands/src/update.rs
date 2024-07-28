@@ -1,7 +1,8 @@
 use core::{constants::QueryError, framework};
 use poise::serenity_prelude as serenity;
 
-const UPDATE_SYNTAX: &str = "Command syntax: update [table_name: string] [user: tagged server memeber] [points: number]";
+const UPDATE_SYNTAX: &str =
+    "Command syntax: update [table_name: string] [user: tagged server memeber] [points: number]";
 
 #[poise::command(slash_command, prefix_command)]
 pub async fn update(
@@ -24,20 +25,31 @@ pub async fn update(
             ctx.reply("Sorry! The number you entered was too large! Try a smaller value.")
                 .await?;
             return Ok(());
-        },
+        }
     }
 
-    match tasks::upsert::upsert_user(ctx.guild_id().unwrap(), member.clone().unwrap().id, pts) {
+    match tasks::upsert::update_user_points(
+        ctx.guild_id().unwrap(),
+        table_name.clone().unwrap(),
+        member.clone().unwrap().id,
+        pts,
+    ) {
         Err(QueryError::Overflow) => {
-            ctx.reply("Sorry, that user can't hold that many points! Try a smaller value.").await?;
+            ctx.reply("Sorry, that user can't hold that many points! Try a smaller value.")
+                .await?;
             return Ok(());
-        },
+        }
         Err(QueryError::None) => {
             ctx.reply("Sorry, I failed to update the specified user. Please try again later.")
                 .await?;
             return Ok(());
         },
-        _ => {},
+        Err(QueryError::NotFound) => {
+            ctx.reply("I couldn't find a table with that name. Did you enter it correctly?")
+                .await?;
+            return Ok(());
+        }
+        _ => {}
     }
 
     let name = member.clone().unwrap().name.to_string();
@@ -71,9 +83,11 @@ pub async fn rename(
         return Ok(());
     }
 
-    if let Err(_) =
-        tasks::upsert::update_table_alias(ctx.guild_id().unwrap(), old_name.clone().unwrap(), new_name.clone().unwrap())
-    {
+    if let Err(_) = tasks::upsert::update_table_alias(
+        ctx.guild_id().unwrap(),
+        old_name.clone().unwrap(),
+        new_name.clone().unwrap(),
+    ) {
         ctx.reply("Encountered an error executing your request. Please try again later.")
             .await?;
         return Ok(());

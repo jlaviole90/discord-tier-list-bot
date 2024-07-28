@@ -1,11 +1,14 @@
-use poise::serenity_prelude as serenity;
 use core::constants::QueryError;
+use poise::serenity_prelude as serenity;
 use std::thread;
 
 use crate::{config, select::get_table_names};
 
-pub fn delete_member(guild_id: serenity::GuildId, user_id: serenity::UserId) -> Result<(), QueryError> {
-    match thread::spawn(move || -> Result<(), QueryError> {
+pub fn delete_member(
+    guild_id: serenity::GuildId,
+    user_id: serenity::UserId,
+) -> Result<(), QueryError> {
+    thread::spawn(move || {
         if let Ok(r) = get_table_names(guild_id) {
             // TODO: restructure each guild to maintain a single table of members.
             // Storing names per table is inefficient
@@ -27,8 +30,5 @@ pub fn delete_member(guild_id: serenity::GuildId, user_id: serenity::UserId) -> 
         Ok(())
     })
     .join()
-    {
-        Ok(Ok(_)) => Ok(()),
-        Ok(Err(_)) | Err(_) => Err(QueryError::None),
-    }
+    .unwrap()
 }

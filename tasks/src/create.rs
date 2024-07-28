@@ -6,7 +6,7 @@ use std::thread;
 use crate::config;
 
 pub fn create(name: String, guild_id: serenity::GuildId) -> Result<(), QueryError> {
-    match thread::spawn(move || -> Result<(), QueryError> {
+    thread::spawn(move || {
         let mut db_client = config::init();
         if let Ok(r) = db_client.query(
             &format!(
@@ -45,11 +45,7 @@ pub fn create(name: String, guild_id: serenity::GuildId) -> Result<(), QueryErro
         Err(QueryError::None)
     })
     .join()
-    {
-        Ok(Ok(_)) => Ok(()),
-        Ok(Err(QueryError::Exists)) => Err(QueryError::Exists),
-        Ok(Err(_)) | Err(_) => Err(QueryError::None),
-    }
+    .unwrap()
 }
 
 pub fn insert_new(
@@ -57,7 +53,7 @@ pub fn insert_new(
     table_name: String,
     members: ExtractMap<serenity::UserId, serenity::Member>,
 ) -> Result<(), QueryError> {
-    match thread::spawn(move || -> Result<(), QueryError> {
+    thread::spawn(move || {
         let mut db_client = config::init();
         // This may not be completely optimal, but if one
         // fails there really isn't any point in doing the rest.
@@ -81,37 +77,24 @@ pub fn insert_new(
         Ok(())
     })
     .join()
-    {
-        Ok(Ok(_)) => Ok(()),
-        // TODO: idempotency
-        Ok(Err(_)) | Err(_) => {
-            Err(QueryError::None)
-        }
-    }
+    .unwrap()
 }
 
 pub fn index_new_table(table_name: String, guild_id: serenity::GuildId) -> Result<(), QueryError> {
-    match thread::spawn(move || -> Result<(), QueryError> {
-        if let Ok(_) = config::init().execute(
-            &format!(
-                "
-                    INSERT INTO table_name_by_guild_id(gid, t_name)
-                    VALUES ({guild_id}, \'{table_name}\');\n
-                "
-            ),
-            &[],
-        ) {
-            Ok(())
-        } else {
-            Err(QueryError::None)
-        }
+    thread::spawn(move || {
+        config::init()
+            .execute(
+                &format!(
+                    "
+                        INSERT INTO table_name_by_guild_id(gid, t_name)
+                        VALUES ({guild_id}, \'{table_name}\');\n
+                    "
+                ),
+                &[],
+            )
+            .map_err(|_| QueryError::None)
+            .map(|_| ())
     })
     .join()
-    {
-        Ok(Ok(_)) => Ok(()),
-        // TODO: idempotency
-        Ok(Err(_)) | Err(_) => {
-            Err(QueryError::None)
-        }
-    }
+    .unwrap()
 }

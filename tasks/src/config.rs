@@ -36,7 +36,7 @@ pub fn init() -> Client {
 }
 
 pub fn create_root_if_not() -> Result<(), QueryError> {
-    match thread::spawn(move || -> Result<(), QueryError> {
+    thread::spawn(|| {
         let mut db_client = init();
 
         let _ = db_client.execute(&format!("CREATE DATABASE root;\n"), &[]);
@@ -65,8 +65,5 @@ pub fn create_root_if_not() -> Result<(), QueryError> {
         Ok(())
     })
     .join()
-    {
-        Ok(Ok(_)) => Ok(()),
-        Ok(Err(_)) | Err(_) => Err(QueryError::None),
-    }
+    .unwrap()
 }
