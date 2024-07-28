@@ -12,7 +12,7 @@ pub fn create(name: String, guild_id: serenity::GuildId) -> Result<(), QueryErro
             &format!(
                 "
                     SELECT * FROM table_name_by_guild_id
-                    WHERE gid = {guild_id} AND t_name = {name};\n
+                    WHERE gid = {guild_id} AND t_name = \'{name}\';\n
                 "
             ),
             &[],

@@ -99,7 +99,7 @@ pub fn upsert_table_index(guild_id: serenity::GuildId, new_name: String) -> Resu
             &format!(
                 "
                     INSERT INTO table_name_by_guild_id(t_name)
-                    VALUES ({new_name})
+                    VALUES (\'{new_name}\')
                     WHERE gid = {guild_id};\n
                 "
             ),
