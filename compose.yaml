@@ -25,10 +25,11 @@ services:
 
   server:
     container_name: discord-tier-list-bot
+    #    platform: "linux/amd64"
     build:
       context: .
       target: final
-    image: discord-tier-list-bot
+    image: crcblio.azurecr.io/discord-tier-list-bot:latest
     ports:
       - 2018:2018
     environment:
